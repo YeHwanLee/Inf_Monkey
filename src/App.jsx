@@ -15,8 +15,12 @@ export default function App() {
     );
   const [characterSrc, setCharacterSrc] = useState(defaultCharacter);
 
+  // 🍌 잘림 현상 완벽 해결 및 직관적인 코드로 교체! (폰트 사이즈 70으로 안정화)
   const defaultProp =
-    'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB4PSI5MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjgwIj7wn42MPC90ZXh0Pjwvc3ZnPg==';
+    'data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='50' y='50' dominant-baseline='central' text-anchor='middle' font-size='70'>🍌</text></svg>"
+    );
   const [propSrc, setPropSrc] = useState(defaultProp);
 
   // 🎵 깃허브 서브경로 꼬임 방지를 위해 맨 앞 슬래시(/) 제거 완료!
