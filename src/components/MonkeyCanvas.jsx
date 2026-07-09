@@ -7,13 +7,30 @@ import React, {
 import { propConfigs } from '../utils/propManager';
 
 const MonkeyCanvas = forwardRef(
-  ({ characterSrc, propSrc, storyData, attemptNumber }, ref) => {
+  (
+    {
+      characterSrc,
+      propSrc,
+      seaAudioSrc,
+      typeAudioSrc,
+      storyData,
+      attemptNumber,
+    },
+    ref
+  ) => {
     const canvasRef = useRef(null);
     const requestRef = useRef(null);
     const startTimeRef = useRef(null);
 
     const imgRef = useRef(null);
     const propImgRef = useRef(null);
+
+    // 🎵 오디오 관련 하드웨어 엘리먼트 레퍼런스
+    const seaAudioRef = useRef(null);
+    const typeAudioRef = useRef(null);
+    const audioCtxRef = useRef(null);
+    const audioDestRef = useRef(null);
+    const lastLettersCountRef = useRef(0); // 타자기 사운드 중복 타격 방지 감시카메라
 
     useEffect(() => {
       const img = new Image();
@@ -33,22 +50,73 @@ const MonkeyCanvas = forwardRef(
       };
     }, [propSrc]);
 
+    // 오디오 오토메이션 노드 초기화 및 믹싱 아키텍처
+    useEffect(() => {
+      if (!seaAudioSrc) return;
+
+      // 오디오 컨텍스트가 없으면 생성 (비디오 추출 믹싱용 두뇌)
+      if (!audioCtxRef.current) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtxRef.current = new AudioContext();
+        audioDestRef.current =
+          audioCtxRef.current.createMediaStreamDestination();
+      }
+
+      const audio = new Audio(seaAudioSrc);
+      audio.loop = true;
+      audio.crossOrigin = 'anonymous';
+      seaAudioRef.current = audio;
+
+      // 미디어 요소를 오디오 그래픽 노드에 바인딩하여 추출 파이프라인에 연결
+      const source = audioCtxRef.current.createMediaElementSource(audio);
+      source.connect(audioCtxRef.current.destination); // 스피커 출력
+      source.connect(audioDestRef.current); // 녹화용 비디오 믹서로 바이패스
+
+      return () => {
+        audio.pause();
+      };
+    }, [seaAudioSrc]);
+
+    useEffect(() => {
+      if (!typeAudioSrc) return;
+      const audio = new Audio(typeAudioSrc);
+      audio.crossOrigin = 'anonymous';
+      typeAudioRef.current = audio;
+
+      if (audioCtxRef.current && audioDestRef.current) {
+        const source = audioCtxRef.current.createMediaElementSource(audio);
+        source.connect(audioCtxRef.current.destination);
+        source.connect(audioDestRef.current);
+      }
+    }, [typeAudioSrc]);
+
     useImperativeHandle(ref, () => ({
       getCanvas: () => canvasRef.current,
+      getAudioTrack: () =>
+        audioDestRef.current
+          ? audioDestRef.current.stream.getAudioTracks()[0]
+          : null,
       resetAnimation: () => {
         startTimeRef.current = null;
+        lastLettersCountRef.current = 0;
+        if (seaAudioRef.current) {
+          seaAudioRef.current.currentTime = 0;
+          seaAudioRef.current.volume = 0;
+          seaAudioRef.current.play().catch(() => {});
+        }
       },
     }));
 
-    const T_INTRO = 1.0;
-    const T_IRIS_OPEN = 2.5;
-    const T_TYPING_START = 3.5;
-    const T_TYPING_END = 8.0;
-    const T_IRIS_CLOSE_START = 8.3;
-    const T_IRIS_CLOSE_END = 9.8;
-    const T_OUTRO_START = 10.1;
-    const T_FADE_OUT = 11.2;
-    const T_TOTAL = 12.0;
+    // ⏱️ 여유롭고 숨막히는 시네마틱 15초 타임라인 큐시트 재정렬
+    const T_INTRO = 2.0; // 인트로 연장 (1.0 -> 2.0초)
+    const T_IRIS_OPEN = 3.5; // 1.5초 동안 초스무스하게 아이리스 오픈
+    const T_TYPING_START = 5.0; // 1.5초간 커서만 깜빡이며 숨고르기 타임 ("어? 뭐지?" 구간 극대화)
+    const T_TYPING_END = 10.0; // 5.0초 동안 한 글자씩 쫀득하고 느릿하게 타다닥 타이핑 (가독성 최상)
+    const T_IRIS_CLOSE_START = 10.5; // 다 치고 0.5초 대기
+    const T_IRIS_CLOSE_END = 12.0; // 1.5초 동안 초스무스하게 아이리스 클로즈
+    const T_OUTRO_START = 12.3;
+    const T_FADE_OUT = 14.0; // 정답 노출 시간 대폭 연장 (여운 시스템)
+    const T_TOTAL = 15.0; // 완벽한 루프 안착을 위한 마무리 페이드아웃
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -65,6 +133,32 @@ const MonkeyCanvas = forwardRef(
         if (!startTimeRef.current) startTimeRef.current = timestamp;
         const elapsed = (timestamp - startTimeRef.current) / 1000;
 
+        // 🎛️ 사운드 볼륨 오토메이션 페이더 연산 로직
+        if (seaAudioRef.current) {
+          if (elapsed < T_INTRO) {
+            seaAudioRef.current.volume = 0;
+          } else if (elapsed >= T_INTRO && elapsed < T_IRIS_OPEN) {
+            // 🌊 바다소리 페이드 인 완료 (0 -> 1)
+            const vol = (elapsed - T_INTRO) / (T_IRIS_OPEN - T_INTRO);
+            seaAudioRef.current.volume = Math.min(1, Math.max(0, vol));
+          } else if (elapsed >= T_IRIS_OPEN && elapsed < T_IRIS_CLOSE_START) {
+            seaAudioRef.current.volume = 1;
+          } else if (
+            elapsed >= T_IRIS_CLOSE_START &&
+            elapsed < T_IRIS_CLOSE_END
+          ) {
+            // 🌊 바다소리 페이드 아웃 완료 (1 -> 0)
+            const vol =
+              1 -
+              (elapsed - T_IRIS_CLOSE_START) /
+                (T_IRIS_CLOSE_END - T_IRIS_CLOSE_START);
+            seaAudioRef.current.volume = Math.min(1, Math.max(0, vol));
+          } else {
+            seaAudioRef.current.volume = 0;
+          }
+        }
+
+        // --- 그래픽 드로잉 파트 ---
         const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
         gradient.addColorStop(0, '#7dd3fc');
         gradient.addColorStop(1, '#e0f2fe');
@@ -76,7 +170,7 @@ const MonkeyCanvas = forwardRef(
         const waveSpeed = (2 * Math.PI) / loopDuration;
         const bobSpeed = (4 * Math.PI) / loopDuration;
 
-        // 🌊 1. 뒤쪽 파도 (0.58)
+        // 파도 1 (뒤)
         ctx.fillStyle = '#0284c7';
         ctx.beginPath();
         ctx.moveTo(0, canvas.height);
@@ -88,7 +182,7 @@ const MonkeyCanvas = forwardRef(
         ctx.lineTo(canvas.width, canvas.height);
         ctx.fill();
 
-        // 🐒 2. 원숭이 캐릭터 (0.57)
+        // 원숭이 스킨
         if (imgRef.current) {
           ctx.save();
           ctx.translate(
@@ -100,7 +194,7 @@ const MonkeyCanvas = forwardRef(
           ctx.restore();
         }
 
-        // 🌊 3. 중간 파도 (0.61)
+        // 파도 2 (중간)
         ctx.fillStyle = '#0ea5e9';
         ctx.beginPath();
         ctx.moveTo(0, canvas.height);
@@ -112,7 +206,7 @@ const MonkeyCanvas = forwardRef(
         ctx.lineTo(canvas.width, canvas.height);
         ctx.fill();
 
-        // 🍌 4. PPL 소품 (0.67)
+        // 소품 스킨
         if (
           elapsed > T_INTRO &&
           elapsed < T_IRIS_CLOSE_END &&
@@ -140,7 +234,7 @@ const MonkeyCanvas = forwardRef(
           });
         }
 
-        // 🌊 5. 앞쪽 파도 (0.72)
+        // 파도 3 (앞쪽 파도 수위 고정 0.72)
         ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
         ctx.moveTo(0, canvas.height);
@@ -152,7 +246,7 @@ const MonkeyCanvas = forwardRef(
         ctx.lineTo(canvas.width, canvas.height);
         ctx.fill();
 
-        // 🔠 타자기 UI
+        // 타자기 텍스트 그래픽 연출
         const startY = 400;
         const letterSpacing = 85;
         const typingPointX = canvas.width / 2 + 250;
@@ -165,8 +259,7 @@ const MonkeyCanvas = forwardRef(
         if (elapsed > T_INTRO && elapsed < T_IRIS_CLOSE_END) {
           ctx.save();
           ctx.beginPath();
-          // 🔥 [완벽 대칭 구조] 좌측 여백 150px, 우측 여백 150px로 사각형 마스크 영역 고정!
-          ctx.rect(150, 0, canvas.width - 300, canvas.height);
+          ctx.rect(150, 0, canvas.width - 300, canvas.height); // 좌우 150px 황금 대칭 비율 벽 유지
           ctx.clip();
 
           ctx.font = "bold 110px 'Special Elite', monospace";
@@ -182,6 +275,18 @@ const MonkeyCanvas = forwardRef(
               1
             );
             lettersToShow = Math.floor(typeProgress * 20);
+          }
+
+          // ⌨️ 타자기 효과음 타격 엔진 감시탑
+          if (
+            lettersToShow > lastLettersCountRef.current &&
+            typeAudioRef.current
+          ) {
+            // 중복을 막고 소리를 0초로 강제 되감기한 후 즉시 재생 (탁!)
+            const soundClone = typeAudioRef.current.cloneNode();
+            soundClone.volume = 0.8;
+            soundClone.play().catch(() => {});
+            lastLettersCountRef.current = lettersToShow;
           }
 
           for (let i = 0; i < lettersToShow; i++) {
@@ -209,9 +314,8 @@ const MonkeyCanvas = forwardRef(
           ctx.restore();
         }
 
-        // 아이리스 트랜지션
+        // 아이리스 연출
         let irisRadius = Math.max(canvas.width, canvas.height);
-
         if (elapsed < T_INTRO || elapsed >= T_IRIS_CLOSE_END) {
           irisRadius = 0;
         } else if (elapsed >= T_INTRO && elapsed < T_IRIS_OPEN) {
@@ -246,7 +350,7 @@ const MonkeyCanvas = forwardRef(
         );
         ctx.fill();
 
-        // UI 텍스트
+        // 인트로/아웃트로 UI 텍스트
         ctx.textAlign = 'center';
 
         if (elapsed < T_INTRO) {

@@ -7,17 +7,20 @@ export default function App() {
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // 🐒 기본 스킨: 회색 원이 아닌 '원숭이 이모티콘' SVG
+  // 📁 스킨 이미지 상태
   const defaultCharacter =
-    "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='50' dominant-baseline='central' text-anchor='middle' font-size='80'%3E%F0%9F%90%92%3C/text%3E%3C/svg%3E";
+    'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB4PSI1MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjgwIj7wn5CSPC90ZXh0Pjwvc3ZnPg==';
   const [characterSrc, setCharacterSrc] = useState(defaultCharacter);
 
   const defaultProp =
     'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB4PSI1MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjgwIj7wn42MPC90ZXh0Pjwvc3ZnPg==';
   const [propSrc, setPropSrc] = useState(defaultProp);
 
-  const [storyData, setStoryData] = useState(generateAttempt());
+  // 🎵 오디오 파일 상태 (추가)
+  const [seaAudioSrc, setSeaAudioSrc] = useState(null);
+  const [typeAudioSrc, setTypeAudioSrc] = useState(null);
 
+  const [storyData, setStoryData] = useState(generateAttempt());
   const [attemptNumber, setAttemptNumber] = useState(() => {
     const saved = localStorage.getItem('monkeyAttempt');
     return saved ? parseInt(saved, 10) : 1;
@@ -33,38 +36,55 @@ export default function App() {
     if (file) setPropSrc(URL.createObjectURL(file));
   };
 
+  // 오디오 등록 핸들러 (추가)
+  const handleSeaAudioChange = (e) => {
+    const file = e.target.files[0];
+    if (file) setSeaAudioSrc(URL.createObjectURL(file));
+  };
+
+  const handleTypeAudioChange = (e) => {
+    const file = e.target.files[0];
+    if (file) setTypeAudioSrc(URL.createObjectURL(file));
+  };
+
   const handleAttemptChange = (e) => {
     const val = parseInt(e.target.value, 10) || 1;
     setAttemptNumber(val);
     localStorage.setItem('monkeyAttempt', val.toString());
   };
 
-  // ▶️ 새로 추가된 '미리보기' (녹화 없이 화면만 재생)
   const handlePreview = () => {
-    if (isRendering) return;
+    if (!canvasComponentRef.current || isRendering) return;
     setStoryData(generateAttempt());
-    if (canvasComponentRef.current) {
-      canvasComponentRef.current.resetAnimation();
-    }
+    canvasComponentRef.current.resetAnimation();
   };
 
   const handleRenderVideo = () => {
-    if (!canvasComponentRef.current || isRendering) return;
+    if (!canvasComponentRef.current) return;
 
     const currentAttempt = attemptNumber;
-
-    // 렌더링 시작 시에도 새로운 텍스트로 갱신
     setStoryData(generateAttempt());
     canvasComponentRef.current.resetAnimation();
 
     const canvas = canvasComponentRef.current.getCanvas();
-    const stream = canvas.captureStream(30);
+    const videoStream = canvas.captureStream(30); // 비디오 트랙 캡처
+
+    // 🎤 캔버스 컴포넌트 내부에서 연동된 오디오 트랙 추출
+    const audioTrack = canvasComponentRef.current.getAudioTrack();
+
+    const combinedStream = new MediaStream();
+    videoStream
+      .getVideoTracks()
+      .forEach((track) => combinedStream.addTrack(track));
+    if (audioTrack) {
+      combinedStream.addTrack(audioTrack); // 오디오 트랙이 존재하면 비디오와 결합!
+    }
 
     const options = {
       mimeType: 'video/webm; codecs=vp9',
       videoBitsPerSecond: 8000000,
     };
-    const recorder = new MediaRecorder(stream, options);
+    const recorder = new MediaRecorder(combinedStream, options);
     const chunks = [];
 
     recorder.ondataavailable = (e) => {
@@ -92,7 +112,8 @@ export default function App() {
 
     requestAnimationFrame(() => {
       recorder.start();
-      const TARGET_DURATION = 12000;
+      // 🔥 12초에서 시네마틱 15초(15000ms)로 리텐션 타임라인 확장!
+      const TARGET_DURATION = 15000;
       const startTime = performance.now();
 
       const monitorProgress = (currentTime) => {
@@ -117,11 +138,11 @@ export default function App() {
 
   return (
     <div className="workspace">
-      <div className="control-panel">
+      <div className="control-panel" style={{ overflowY: 'auto' }}>
         <h1 className="title">Monkey Typing Simulator</h1>
 
         <div className="section">
-          <label className="label">1. 캐릭터 스킨 (기본: 🐒)</label>
+          <label className="label">1. 캐릭터 스킨 업로드</label>
           <div className="file-upload-wrapper">
             <input
               type="file"
@@ -131,13 +152,13 @@ export default function App() {
               onChange={handleCharFileChange}
             />
             <label htmlFor="char-file" className="file-custom-btn">
-              📁 캐릭터 PNG 선택
+              🐒 캐릭터 PNG 선택
             </label>
           </div>
         </div>
 
         <div className="section">
-          <label className="label">2. PPL 소품 스킨 (기본: 🍌)</label>
+          <label className="label">2. PPL 소품 스킨 업로드</label>
           <div className="file-upload-wrapper">
             <input
               type="file"
@@ -147,13 +168,58 @@ export default function App() {
               onChange={handlePropFileChange}
             />
             <label htmlFor="prop-file" className="file-custom-btn">
-              📁 소품 PNG 선택
+              🍌 소품 PNG 선택
+            </label>
+          </div>
+        </div>
+
+        {/* 🎵 오디오 소스 사운드 파일 업로드 패널 추가 */}
+        <div className="section">
+          <label className="label">3. 바다 환경음 등록 (.mp3)</label>
+          <div className="file-upload-wrapper">
+            <input
+              type="file"
+              id="sea-audio"
+              accept="audio/*"
+              className="input-file-hidden"
+              onChange={handleSeaAudioChange}
+            />
+            <label
+              htmlFor="sea-audio"
+              className="file-custom-btn"
+              style={{ color: seaAudioSrc ? '#34d399' : '#e2e8f0' }}
+            >
+              {seaAudioSrc
+                ? '🎵 바다 사운드 장전 완료'
+                : '🌊 바다 소리 파일 선택'}
             </label>
           </div>
         </div>
 
         <div className="section">
-          <label className="label">3. 현재 시도 횟수</label>
+          <label className="label">4. 타자기 타격음 등록 (.mp3)</label>
+          <div className="file-upload-wrapper">
+            <input
+              type="file"
+              id="type-audio"
+              accept="audio/*"
+              className="input-file-hidden"
+              onChange={handleTypeAudioChange}
+            />
+            <label
+              htmlFor="type-audio"
+              className="file-custom-btn"
+              style={{ color: typeAudioSrc ? '#34d399' : '#e2e8f0' }}
+            >
+              {typeAudioSrc
+                ? '🎵 타자기 사운드 장전 완료'
+                : '⌨️ 타자기 소리 파일 선택'}
+            </label>
+          </div>
+        </div>
+
+        <div className="section">
+          <label className="label">5. 현재 시도 횟수</label>
           <input
             type="number"
             className="file-custom-btn"
@@ -164,44 +230,58 @@ export default function App() {
             }}
             value={attemptNumber}
             onChange={handleAttemptChange}
+            disabled={isRendering}
           />
         </div>
 
-        {/* ▶️ UI: 미리보기 버튼과 렌더링 버튼 나란히 배치 */}
         <div className="section">
-          <label className="label">4. 12초 시퀀스 제어</label>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              className="file-custom-btn"
-              onClick={handlePreview}
-              disabled={isRendering}
-              style={{
-                flex: 1,
-                backgroundColor: '#334155',
-                border: 'none',
-                fontWeight: 'bold',
-              }}
-            >
-              ▶️ 미리보기
-            </button>
-            <button
-              className={`render-btn ${isRendering ? 'active' : ''}`}
-              onClick={handleRenderVideo}
-              disabled={isRendering}
-              style={{ flex: 2 }}
-            >
-              {isRendering ? `⏳ 렌더링 중... (${progress}%)` : '🎬 영상 추출'}
-            </button>
-          </div>
+          <label className="label">6. 테스트 뷰 (인코딩 X)</label>
+          <button
+            className="file-custom-btn"
+            style={{
+              backgroundColor: '#4f46e5',
+              borderColor: '#4338ca',
+              color: 'white',
+              fontWeight: 'bold',
+            }}
+            onClick={handlePreview}
+            disabled={isRendering}
+          >
+            ▶️ 미리보기 재생
+          </button>
+        </div>
+
+        <div className="section">
+          <label className="label">7. 비디오 출력 (15초 시네마틱 루프)</label>
+          <button
+            className={`render-btn ${isRendering ? 'active' : ''}`}
+            onClick={handleRenderVideo}
+            disabled={isRendering}
+          >
+            {isRendering
+              ? `⏳ 렌더링 중... (${progress}%)`
+              : '🎬 시뮬레이션 가동 & 렌더링'}
+          </button>
+          {isRendering && (
+            <div className="progress-container">
+              <div
+                className="progress-bar"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="render-zone">
         <div className="reels-viewport">
+          {/* 오디오 소스 패스 인 */}
           <MonkeyCanvas
             ref={canvasComponentRef}
             characterSrc={characterSrc}
             propSrc={propSrc}
+            seaAudioSrc={seaAudioSrc}
+            typeAudioSrc={typeAudioSrc}
             storyData={storyData}
             attemptNumber={attemptNumber}
           />
