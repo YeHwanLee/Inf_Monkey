@@ -7,7 +7,7 @@ export default function App() {
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // 🐒 타자기(⌨️)와 원숭이(🐒)가 나란히 있는 듀얼 이모티콘 스킨!
+  // 🐒 타자기(⌨️)와 원숭이(🐒) 듀얼 이모티콘 스킨
   const defaultCharacter =
     'data:image/svg+xml;utf8,' +
     encodeURIComponent(
@@ -19,9 +19,9 @@ export default function App() {
     'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB4PSI1MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjgwIj7wn42MPC90ZXh0Pjwvc3ZnPg==';
   const [propSrc, setPropSrc] = useState(defaultProp);
 
-  // 🎵 오디오 기본 경로를 public 폴더의 mp3 파일로 하드코딩
-  const [seaAudioSrc, setSeaAudioSrc] = useState('/sea.mp3');
-  const [typeAudioSrc, setTypeAudioSrc] = useState('/type.mp3');
+  // 🎵 .m4a 확장자 하드코딩
+  const [seaAudioSrc, setSeaAudioSrc] = useState('/sea.m4a');
+  const [typeAudioSrc, setTypeAudioSrc] = useState('/type.m4a');
 
   const [storyData, setStoryData] = useState(generateAttempt());
   const [attemptNumber, setAttemptNumber] = useState(() => {
@@ -174,7 +174,7 @@ export default function App() {
         </div>
 
         <div className="section">
-          <label className="label">3. 바다 환경음 등록 (.mp3)</label>
+          <label className="label">3. 바다 환경음 등록 (.m4a/.mp3)</label>
           <div className="file-upload-wrapper">
             <input
               type="file"
@@ -188,12 +188,12 @@ export default function App() {
               className="file-custom-btn"
               style={{
                 color:
-                  seaAudioSrc && seaAudioSrc !== '/sea.mp3'
+                  seaAudioSrc && seaAudioSrc !== '/sea.m4a'
                     ? '#34d399'
                     : '#e2e8f0',
               }}
             >
-              {seaAudioSrc && seaAudioSrc !== '/sea.mp3'
+              {seaAudioSrc && seaAudioSrc !== '/sea.m4a'
                 ? '🎵 커스텀 바다 사운드 장전'
                 : '🌊 기본 바다 소리 적용중'}
             </label>
@@ -201,7 +201,7 @@ export default function App() {
         </div>
 
         <div className="section">
-          <label className="label">4. 타자기 타격음 등록 (.mp3)</label>
+          <label className="label">4. 타자기 타격음 등록 (.m4a/.mp3)</label>
           <div className="file-upload-wrapper">
             <input
               type="file"
@@ -215,12 +215,12 @@ export default function App() {
               className="file-custom-btn"
               style={{
                 color:
-                  typeAudioSrc && typeAudioSrc !== '/type.mp3'
+                  typeAudioSrc && typeAudioSrc !== '/type.m4a'
                     ? '#34d399'
                     : '#e2e8f0',
               }}
             >
-              {typeAudioSrc && typeAudioSrc !== '/type.mp3'
+              {typeAudioSrc && typeAudioSrc !== '/type.m4a'
                 ? '🎵 커스텀 타격음 장전'
                 : '⌨️ 기본 타격음 적용중'}
             </label>

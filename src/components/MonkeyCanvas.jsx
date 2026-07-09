@@ -49,19 +49,21 @@ const MonkeyCanvas = forwardRef(
       };
     }, [propSrc]);
 
-    useEffect(() => {
-      if (!seaAudioSrc) return;
-
+    const initAudioContext = () => {
       if (!audioCtxRef.current) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         audioCtxRef.current = new AudioContext();
         audioDestRef.current =
           audioCtxRef.current.createMediaStreamDestination();
       }
+    };
+
+    useEffect(() => {
+      if (!seaAudioSrc) return;
+      initAudioContext();
 
       const audio = new Audio(seaAudioSrc);
       audio.loop = true;
-      audio.crossOrigin = 'anonymous';
       seaAudioRef.current = audio;
 
       const source = audioCtxRef.current.createMediaElementSource(audio);
@@ -75,15 +77,18 @@ const MonkeyCanvas = forwardRef(
 
     useEffect(() => {
       if (!typeAudioSrc) return;
+      initAudioContext();
+
       const audio = new Audio(typeAudioSrc);
-      audio.crossOrigin = 'anonymous';
       typeAudioRef.current = audio;
 
-      if (audioCtxRef.current && audioDestRef.current) {
-        const source = audioCtxRef.current.createMediaElementSource(audio);
-        source.connect(audioCtxRef.current.destination);
-        source.connect(audioDestRef.current);
-      }
+      const source = audioCtxRef.current.createMediaElementSource(audio);
+      source.connect(audioCtxRef.current.destination);
+      source.connect(audioDestRef.current);
+
+      return () => {
+        audio.pause();
+      };
     }, [typeAudioSrc]);
 
     useImperativeHandle(ref, () => ({
@@ -95,10 +100,17 @@ const MonkeyCanvas = forwardRef(
       resetAnimation: () => {
         startTimeRef.current = null;
         lastLettersCountRef.current = 0;
+
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume();
+        }
+
         if (seaAudioRef.current) {
           seaAudioRef.current.currentTime = 0;
           seaAudioRef.current.volume = 0;
-          seaAudioRef.current.play().catch(() => {});
+          seaAudioRef.current
+            .play()
+            .catch((e) => console.warn('오디오 차단 해제 중...', e));
         }
       },
     }));
@@ -161,7 +173,7 @@ const MonkeyCanvas = forwardRef(
         const waveSpeed = (2 * Math.PI) / loopDuration;
         const bobSpeed = (4 * Math.PI) / loopDuration;
 
-        // 🌊 파도 1 (뒤쪽)
+        // 파도 1
         ctx.fillStyle = '#0284c7';
         ctx.beginPath();
         ctx.moveTo(0, canvas.height);
@@ -173,7 +185,7 @@ const MonkeyCanvas = forwardRef(
         ctx.lineTo(canvas.width, canvas.height);
         ctx.fill();
 
-        // 🐒 원숭이 캐릭터
+        // 원숭이 캐릭터
         if (imgRef.current) {
           ctx.save();
           ctx.translate(
@@ -185,7 +197,7 @@ const MonkeyCanvas = forwardRef(
           ctx.restore();
         }
 
-        // 🌊 파도 2 (중간)
+        // 파도 2
         ctx.fillStyle = '#0ea5e9';
         ctx.beginPath();
         ctx.moveTo(0, canvas.height);
@@ -197,7 +209,7 @@ const MonkeyCanvas = forwardRef(
         ctx.lineTo(canvas.width, canvas.height);
         ctx.fill();
 
-        // 🍌 소품 (좌우 바나나)
+        // 소품
         if (
           elapsed > T_INTRO &&
           elapsed < T_IRIS_CLOSE_END &&
@@ -225,7 +237,7 @@ const MonkeyCanvas = forwardRef(
           });
         }
 
-        // 🌊 파도 3 (앞쪽)
+        // 파도 3
         ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
         ctx.moveTo(0, canvas.height);
@@ -237,7 +249,7 @@ const MonkeyCanvas = forwardRef(
         ctx.lineTo(canvas.width, canvas.height);
         ctx.fill();
 
-        // 🔠 타자기 UI 연출
+        // 타자기 UI
         const startY = 400;
         const letterSpacing = 85;
         const typingPointX = canvas.width / 2 + 250;
@@ -250,7 +262,7 @@ const MonkeyCanvas = forwardRef(
         if (elapsed > T_INTRO && elapsed < T_IRIS_CLOSE_END) {
           ctx.save();
           ctx.beginPath();
-          ctx.rect(150, 0, canvas.width - 300, canvas.height); // 좌우 대칭 클리핑
+          ctx.rect(150, 0, canvas.width - 300, canvas.height);
           ctx.clip();
 
           ctx.font = "bold 110px 'Special Elite', monospace";
@@ -268,14 +280,26 @@ const MonkeyCanvas = forwardRef(
             lettersToShow = Math.floor(typeProgress * 20);
           }
 
-          // ⌨️ 타자기 효과음 타격 엔진 (원본 되감기 방식으로 버그 픽스 완료)
+          // 🎵 오디오 선행 타격 엔진 (0.17초 미리 시작)
+          const audioOffset = 0.17;
+          let audioElapsed = elapsed + audioOffset;
+          let audioLettersToPlay = 0;
+
+          if (audioElapsed > T_TYPING_START) {
+            let audioTypeProgress = Math.min(
+              (audioElapsed - T_TYPING_START) / (T_TYPING_END - T_TYPING_START),
+              1
+            );
+            audioLettersToPlay = Math.floor(audioTypeProgress * 20);
+          }
+
           if (
-            lettersToShow > lastLettersCountRef.current &&
+            audioLettersToPlay > lastLettersCountRef.current &&
             typeAudioRef.current
           ) {
             typeAudioRef.current.currentTime = 0;
             typeAudioRef.current.play().catch(() => {});
-            lastLettersCountRef.current = lettersToShow;
+            lastLettersCountRef.current = audioLettersToPlay;
           }
 
           for (let i = 0; i < lettersToShow; i++) {
@@ -303,7 +327,7 @@ const MonkeyCanvas = forwardRef(
           ctx.restore();
         }
 
-        // 아이리스 트랜지션
+        // 아이리스 연출
         let irisRadius = Math.max(canvas.width, canvas.height);
         if (elapsed < T_INTRO || elapsed >= T_IRIS_CLOSE_END) {
           irisRadius = 0;
@@ -339,7 +363,6 @@ const MonkeyCanvas = forwardRef(
         );
         ctx.fill();
 
-        // UI 텍스트
         ctx.textAlign = 'center';
 
         if (elapsed < T_INTRO) {
