@@ -7,18 +7,21 @@ export default function App() {
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // 📁 스킨 이미지 상태
+  // 🐒 타자기(⌨️)와 원숭이(🐒)가 나란히 있는 듀얼 이모티콘 스킨!
   const defaultCharacter =
-    'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB4PSI1MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjgwIj7wn5CSPC90ZXh0Pjwvc3ZnPg==';
+    'data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text x='35' y='55' dominant-baseline='central' text-anchor='middle' font-size='40'>⌨️</text><text x='75' y='50' dominant-baseline='central' text-anchor='middle' font-size='45'>🐒</text></svg>"
+    );
   const [characterSrc, setCharacterSrc] = useState(defaultCharacter);
 
   const defaultProp =
     'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB4PSI1MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjgwIj7wn42MPC90ZXh0Pjwvc3ZnPg==';
   const [propSrc, setPropSrc] = useState(defaultProp);
 
-  // 🎵 오디오 파일 상태 (추가)
-  const [seaAudioSrc, setSeaAudioSrc] = useState(null);
-  const [typeAudioSrc, setTypeAudioSrc] = useState(null);
+  // 🎵 오디오 기본 경로를 public 폴더의 mp3 파일로 하드코딩
+  const [seaAudioSrc, setSeaAudioSrc] = useState('/sea.mp3');
+  const [typeAudioSrc, setTypeAudioSrc] = useState('/type.mp3');
 
   const [storyData, setStoryData] = useState(generateAttempt());
   const [attemptNumber, setAttemptNumber] = useState(() => {
@@ -36,7 +39,6 @@ export default function App() {
     if (file) setPropSrc(URL.createObjectURL(file));
   };
 
-  // 오디오 등록 핸들러 (추가)
   const handleSeaAudioChange = (e) => {
     const file = e.target.files[0];
     if (file) setSeaAudioSrc(URL.createObjectURL(file));
@@ -67,9 +69,8 @@ export default function App() {
     canvasComponentRef.current.resetAnimation();
 
     const canvas = canvasComponentRef.current.getCanvas();
-    const videoStream = canvas.captureStream(30); // 비디오 트랙 캡처
+    const videoStream = canvas.captureStream(30);
 
-    // 🎤 캔버스 컴포넌트 내부에서 연동된 오디오 트랙 추출
     const audioTrack = canvasComponentRef.current.getAudioTrack();
 
     const combinedStream = new MediaStream();
@@ -77,7 +78,7 @@ export default function App() {
       .getVideoTracks()
       .forEach((track) => combinedStream.addTrack(track));
     if (audioTrack) {
-      combinedStream.addTrack(audioTrack); // 오디오 트랙이 존재하면 비디오와 결합!
+      combinedStream.addTrack(audioTrack);
     }
 
     const options = {
@@ -112,7 +113,6 @@ export default function App() {
 
     requestAnimationFrame(() => {
       recorder.start();
-      // 🔥 12초에서 시네마틱 15초(15000ms)로 리텐션 타임라인 확장!
       const TARGET_DURATION = 15000;
       const startTime = performance.now();
 
@@ -173,7 +173,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* 🎵 오디오 소스 사운드 파일 업로드 패널 추가 */}
         <div className="section">
           <label className="label">3. 바다 환경음 등록 (.mp3)</label>
           <div className="file-upload-wrapper">
@@ -187,11 +186,16 @@ export default function App() {
             <label
               htmlFor="sea-audio"
               className="file-custom-btn"
-              style={{ color: seaAudioSrc ? '#34d399' : '#e2e8f0' }}
+              style={{
+                color:
+                  seaAudioSrc && seaAudioSrc !== '/sea.mp3'
+                    ? '#34d399'
+                    : '#e2e8f0',
+              }}
             >
-              {seaAudioSrc
-                ? '🎵 바다 사운드 장전 완료'
-                : '🌊 바다 소리 파일 선택'}
+              {seaAudioSrc && seaAudioSrc !== '/sea.mp3'
+                ? '🎵 커스텀 바다 사운드 장전'
+                : '🌊 기본 바다 소리 적용중'}
             </label>
           </div>
         </div>
@@ -209,11 +213,16 @@ export default function App() {
             <label
               htmlFor="type-audio"
               className="file-custom-btn"
-              style={{ color: typeAudioSrc ? '#34d399' : '#e2e8f0' }}
+              style={{
+                color:
+                  typeAudioSrc && typeAudioSrc !== '/type.mp3'
+                    ? '#34d399'
+                    : '#e2e8f0',
+              }}
             >
-              {typeAudioSrc
-                ? '🎵 타자기 사운드 장전 완료'
-                : '⌨️ 타자기 소리 파일 선택'}
+              {typeAudioSrc && typeAudioSrc !== '/type.mp3'
+                ? '🎵 커스텀 타격음 장전'
+                : '⌨️ 기본 타격음 적용중'}
             </label>
           </div>
         </div>
@@ -275,7 +284,6 @@ export default function App() {
 
       <div className="render-zone">
         <div className="reels-viewport">
-          {/* 오디오 소스 패스 인 */}
           <MonkeyCanvas
             ref={canvasComponentRef}
             characterSrc={characterSrc}
