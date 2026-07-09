@@ -1,0 +1,136 @@
+/* 🔠 구글 빈티지 타자기 폰트(Special Elite) 자동 로드 */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=Special+Elite&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+body,
+html {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #0b0f19;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #f1f5f9;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+.workspace {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.control-panel {
+  width: 400px;
+  height: 100%;
+  background-color: #111827;
+  border-right: 1px solid #1e293b;
+  padding: 40px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  z-index: 20;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #38bdf8;
+  margin: 0 0 10px 0;
+  letter-spacing: -0.5px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.input-file-hidden {
+  display: none;
+}
+.file-custom-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.file-custom-btn:hover {
+  background-color: #2d3748;
+}
+
+.render-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: white;
+  font-weight: bold;
+  font-size: 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.render-btn.active {
+  background: #ef4444;
+  cursor: not-allowed;
+}
+
+.progress-container {
+  width: 100%;
+  height: 6px;
+  background-color: #1f2937;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8 0%, #06b6d4 100%);
+  transition: width 0.05s linear;
+}
+
+.render-zone {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #0b0f19;
+  padding: 40px;
+}
+
+.reels-viewport {
+  height: 100%;
+  aspect-ratio: 9 / 16;
+  background-color: black;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.render-canvas {
+  width: 100%;
+  height: 100%;
+}
